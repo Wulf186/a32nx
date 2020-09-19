@@ -1,6 +1,8 @@
 class Jet_MFD_NDCompass extends Jet_NDCompass {
     constructor() {
         super();
+        this._lastNavAid1State = NAV_AID_STATE.OFF;
+        this._lastNavAid2State = NAV_AID_STATE.OFF;
     }
     connectedCallback() {
         super.connectedCallback();
@@ -157,6 +159,13 @@ class Jet_MFD_NDCompass extends Jet_NDCompass {
                 {
                     var halfw = 7;
                     var halfh = 10;
+                    this.trackingLine = document.createElementNS(Avionics.SVG.NS, "path");
+                    this.trackingLine.setAttribute("id", "trackingLine");
+                    this.trackingLine.setAttribute("d", "M50 50 v " + (circleRadius - halfh * 2));
+                    this.trackingLine.setAttribute("fill", "transparent");
+                    this.trackingLine.setAttribute("stroke", "#00FF21");
+                    this.trackingLine.setAttribute("stroke-width", "3");
+                    this.trackingGroup.appendChild(this.trackingLine);
                     var p1 = (50) + ", " + (50 + circleRadius);
                     var p2 = (50 + halfw) + ", " + (50 + circleRadius - halfh);
                     var p3 = (50) + ", " + (50 + circleRadius - halfh * 2);
@@ -410,26 +419,30 @@ class Jet_MFD_NDCompass extends Jet_NDCompass {
             this.courseGroup.setAttribute("id", "CourseInfo");
             this.rotatingCircle.appendChild(this.courseGroup);
             {
+                // VOR/ADF Bearing 1
                 this.bearing1 = document.createElementNS(Avionics.SVG.NS, "g");
                 this.bearing1.setAttribute("id", "bearing1");
                 this.bearing1.setAttribute("visibility", "hidden");
                 this.courseGroup.appendChild(this.bearing1);
                 let arrow = document.createElementNS(Avionics.SVG.NS, "path");
-                arrow.setAttribute("d", "M500 960 L500 800 M500 40 L500 200 M500 80 L570 150 M500 80 L430 150");
-                arrow.setAttribute("stroke", "#36c8d2");
-                arrow.setAttribute("stroke-width", "10");
+                arrow.setAttribute("d", "M500 835 500 719 M500 165 500 281 M500 194 551 245 M500 194 449 245"); // Resized, the original is too large.
+                arrow.setAttribute("stroke", "white");
+                arrow.setAttribute("stroke-width", "7");
                 arrow.setAttribute("fill", "none");
                 this.bearing1.appendChild(arrow);
+
+                // VOR/ADF Bearing 2
                 this.bearing2 = document.createElementNS(Avionics.SVG.NS, "g");
                 this.bearing2.setAttribute("id", "bearing2");
                 this.bearing2.setAttribute("visibility", "hidden");
                 this.courseGroup.appendChild(this.bearing2);
                 arrow = document.createElementNS(Avionics.SVG.NS, "path");
-                arrow.setAttribute("d", "M500 960 L500 920 M470 800 L470 900 Q500 960 530 900 L530 800 M500 40 L500 80 L570 150 M500 80 L430 150 M470 110 L470 200 M530 110 L530 200");
-                arrow.setAttribute("stroke", "#36c8d2");
-                arrow.setAttribute("stroke-width", "10");
+                arrow.setAttribute("d", "M500 832 500 803M478 717 478 789Q500 832 522 789L522 717M500 168 500 197 551 247M500 197 449 247M478 219 478 283M522 219 522 283"); // Resized, the original is too large.
+                arrow.setAttribute("stroke", "white");
+                arrow.setAttribute("stroke-width", "7");
                 arrow.setAttribute("fill", "none");
                 this.bearing2.appendChild(arrow);
+
                 this.course = document.createElementNS(Avionics.SVG.NS, "g");
                 this.course.setAttribute("id", "course");
                 this.courseGroup.appendChild(this.course);
@@ -621,6 +634,90 @@ class Jet_MFD_NDCompass extends Jet_NDCompass {
         if (this.headingGroup) this.headingGroup.setAttribute("visibility", failed ? "hidden" : "visible");
         if (this.selectedHeadingGroup) this.selectedHeadingGroup.setAttribute("visibility", failed ? "hidden" : "visible");
         if (this.neutralLine) this.neutralLine.setAttribute("visibility", failed ? "hidden" : "visible");
+    }
+
+    /**
+     * Updates navigation aid arrows such as VOR or ADF bearings
+     */
+    updateNavAid() {
+        // Navigation 1
+        let navAid1State = Simplane.getAutoPilotNavAidState(1, 1);
+        if (this._lastNavAid1State != navAid1State) {
+            switch (navAid1State) {
+                case NAV_AID_STATE.OFF:
+                    this.logic_brg1Source = 0;
+                    this.setAttribute("show_bearing1", "false");
+
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing1_bearing", "1");
+                    this.setAttribute("bearing1_bearing", "");
+                    break;
+                case NAV_AID_STATE.VOR:
+                    this.logic_brg1Source = 1;
+                    this.setAttribute("show_bearing1", "true");
+
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing1_bearing", "1");
+                    this.setAttribute("bearing1_bearing", "");
+                    break;
+                case NAV_AID_STATE.ADF:
+                    this.logic_brg1Source = 4;
+                    this.setAttribute("show_bearing1", "true");
+
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing1_bearing", "1");
+                    this.setAttribute("bearing1_bearing", "");
+                    break;
+            }
+            this._lastNavAid1State = navAid1State;
+        }
+
+        // Navigation 2
+        let navAid2State = Simplane.getAutoPilotNavAidState(1, 2);
+        if (this._lastNavAid2State != navAid2State) {
+            switch (navAid2State) {
+                case NAV_AID_STATE.OFF:
+                    this.logic_brg2Source = 0;
+                    this.setAttribute("show_bearing2", "false");
+
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing2_bearing", "1");
+                    this.setAttribute("bearing2_bearing", "");
+                    break;
+                case NAV_AID_STATE.VOR:
+                    this.logic_brg2Source = 2;
+                    this.setAttribute("show_bearing2", "true");
+                    
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing2_bearing", "1");
+                    this.setAttribute("bearing2_bearing", "");
+                    break;
+                case NAV_AID_STATE.ADF:
+                    this.logic_brg2Source = 4;
+                    this.setAttribute("show_bearing2", "true");
+
+                    // Workaround bearing arrow displayed incorrectly
+                    this.setAttribute("bearing2_bearing", "1");
+                    this.setAttribute("bearing2_bearing", "");
+                    break;
+            }
+            this._lastNavAid2State = navAid2State;
+        }
+    }
+
+    /**
+     * Override `Jet_NDCompass.update` to add additonal update operations
+     * 
+     * @param {number} _deltaTime the time passed between current and previous frame
+     */
+    update(_deltaTime) {
+        // Update parent class state
+        super.update(_deltaTime);
+
+        this.updateNavAid();
+
+        // Update fail last to overwrite every other updates
+        this.updateFail();
     }
 }
 customElements.define("jet-mfd-nd-compass", Jet_MFD_NDCompass);
